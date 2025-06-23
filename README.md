@@ -6,3 +6,6 @@ Project is being done with instruments such PostrgeSQL, PyCharm.
 
 Interface:
 Terminal, where you will see instructions and operate with numbers.
+
+
+I just start to use github, so it`s difficult to coordinate files. Please, choose branch with latest version of project.
