@@ -16,12 +16,11 @@ BEGIN;
 CREATE TABLE IF NOT EXISTS public."Persons"
 (
     person_id integer NOT NULL,
-    first_name character varying(32) NOT NULL,
     last_name character varying(32) NOT NULL,
+    first_name character varying(32) NOT NULL,
     second_name character varying(32),
     birthday date NOT NULL,
-    current_city_id integer,
-    "INN" character varying(12) NOT NULL DEFAULT '000000000000',
+    city_id integer,
     PRIMARY KEY (person_id)
 );
 
@@ -36,7 +35,6 @@ CREATE TABLE IF NOT EXISTS public."Accounts"
 (
     account_id integer NOT NULL,
     account_number character varying(20) NOT NULL DEFAULT '0000000000000000',
-    person_id integer,
     body_id integer,
     open_date timestamp without time zone,
     close_date timestamp without time zone,
@@ -84,16 +82,8 @@ CREATE TABLE IF NOT EXISTS public."Cases_Bodies"
 );
 
 ALTER TABLE IF EXISTS public."Persons"
-    ADD FOREIGN KEY (current_city_id)
+    ADD FOREIGN KEY (city_id)
     REFERENCES public."Cities" (city_id) MATCH SIMPLE
-    ON UPDATE NO ACTION
-    ON DELETE CASCADE
-    NOT VALID;
-
-
-ALTER TABLE IF EXISTS public."Accounts"
-    ADD FOREIGN KEY (person_id)
-    REFERENCES public."Persons" (person_id) MATCH SIMPLE
     ON UPDATE NO ACTION
     ON DELETE CASCADE
     NOT VALID;
@@ -163,12 +153,12 @@ INSERT INTO public."Cities" VALUES
 (10, 'Chelyabinsk');
 
 INSERT INTO public."Persons" VALUES
-(1, 'Blinovskaya', 'Elena', 'Olegovna', '1981-08-25', 1, '760303376240'),
-(2, 'Vasiliev', 'Nikolay', 'Vladimirovich', '2000-01-01', 4, '123456789010'),
-(3, 'Kravcev', 'Ivan', 'Borisovich', '1995-04-25', 9, '109876543210'),
-(4, 'Strelnikova', 'Yula', 'Grigorevna', '1972-11-11', 5, '111122223333'),
-(5, 'Levushkin', 'Marat', 'Yusupovich', '1980-03-17', 1, '444455556666'),
-(6, 'Trolin', 'Viktor', NULL, '1985-06-07', 1, '777788889999');
+(1, 'Blinovskaya', 'Elena', 'Olegovna', '1981-08-25', 1),
+(2, 'Vasiliev', 'Nikolay', 'Vladimirovich', '2000-01-01', 4),
+(3, 'Kravcev', 'Ivan', 'Borisovich', '1995-04-25', 9),
+(4, 'Strelnikova', 'Yula', 'Grigorevna', '1972-11-11', 5),
+(5, 'Levushkin', 'Marat', 'Yusupovich', '1980-03-17', 1),
+(6, 'Trolin', 'Viktor', NULL, '1985-06-07', 1);
 
 INSERT INTO public."Bodies" VALUES
 (1, 'ENT', '111222333444', 'Vasilek', '2015-06-09', Null, 3),
