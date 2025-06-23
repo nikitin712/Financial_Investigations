@@ -9,3 +9,8 @@ Terminal, where you will see instructions and operate with numbers.
 
 
 I just start to use github, so it`s difficult to coordinate files. Please, choose branch with latest version of project.
+
+The latest version: version2 - add search_by_name function and insert. The way of showing info from tables was changed too: use pandas to convert tables to dataframes.
+
+Previous versions:
+version1 - function of select was added.
