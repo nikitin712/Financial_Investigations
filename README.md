@@ -13,5 +13,5 @@ I just start to use github, so it`s difficult to coordinate files. Please, choos
 
 The latest version: version2 - add search_by_name function and insert. The way of showing info from tables was changed too: use pandas to convert tables to dataframes.
 
-Previous versions:point_down::
+Previous versions :point_down: :
 version1 - function of select was added.
