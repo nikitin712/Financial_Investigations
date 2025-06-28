@@ -50,6 +50,7 @@ CREATE TABLE IF NOT EXISTS public."Bodies"
     start_date date,
 	end_date date,
     "CEO_id_or_person_id" integer NOT NULL,
+	parent_body integer,
     PRIMARY KEY (body_id)
 );
 
@@ -103,6 +104,13 @@ ALTER TABLE IF EXISTS public."Bodies"
     ON UPDATE NO ACTION
     ON DELETE CASCADE
     NOT VALID;
+	
+ALTER TABLE IF EXISTS public."Bodies"
+    ADD FOREIGN KEY ("parent_body")
+    REFERENCES public."Bodies" (body_id) MATCH SIMPLE
+    ON UPDATE NO ACTION
+    ON DELETE CASCADE
+    NOT VALID;
 
 
 ALTER TABLE IF EXISTS public."Transactions"
@@ -138,6 +146,8 @@ ALTER TABLE IF EXISTS public."Cases_Bodies"
 
 END;
 
+
+
 --insert
 BEGIN;
 INSERT INTO public."Cities" VALUES
@@ -152,6 +162,7 @@ INSERT INTO public."Cities" VALUES
 (9, 'Samara'),
 (10, 'Chelyabinsk');
 
+-- id, last, first, second, birthday, city
 INSERT INTO public."Persons" VALUES
 (1, 'Blinovskaya', 'Elena', 'Olegovna', '1981-08-25', 1),
 (2, 'Vasiliev', 'Nikolay', 'Vladimirovich', '2000-01-01', 4),
@@ -160,19 +171,44 @@ INSERT INTO public."Persons" VALUES
 (5, 'Levushkin', 'Marat', 'Yusupovich', '1980-03-17', 1),
 (6, 'Trolin', 'Viktor', NULL, '1985-06-07', 1);
 
+-- id, type, INN, name, start, end, owner, parent_comp 
 INSERT INTO public."Bodies" VALUES
-(1, 'ENT', '111222333444', 'Vasilek', '2015-06-09', Null, 3),
-(2, 'OOO', '5555566666', 'MetallNew', '2003-02-26', Null, 1),
-(3, 'OAO', '7777788888', 'Gorgeus', '2011-11-11', '2025-03-02', 2),
-(4, 'GUP', '3434343434', 'MetallOld', '2010-10-19', Null, 1),
-(5, 'ZAO', '1010101010', 'Kommercia', '2023-09-10', Null, 6),
-(6, 'OOO', '1234512345', 'TransSib', '2024-01-02', Null, 2),
-(7, 'fiz', '760303376240', Null, Null, Null, 1),
-(8, 'fiz', '123456789010', Null, Null, Null, 2),
-(9, 'fiz', '109876543210', Null, Null, Null, 3),
-(10, 'fiz', '111122223333', Null, Null, Null, 4),
-(11, 'fiz', '444455556666', Null, Null, Null, 5),
-(12, 'fiz', '777788889999', Null, Null, Null, 6);
+(1, 'ENT', '111222333444', 'Vasilek', '2015-06-09', Null, 3, Null),
+(2, 'OOO', '5555566666', 'MetallNew', '2003-02-26', Null, 1, Null),
+(3, 'OOO', '7777788888', 'Gorgeus', '2011-11-11', '2025-03-02', 2, Null),
+(4, 'GUP', '3434343434', 'MetallOld', '2010-10-19', Null, 1, Null),
+(5, 'GUP', '1010101010', 'Kommercia', '2023-09-10', Null, 6, Null),
+(6, 'OOO', '1234512345', 'TransSib', '2024-01-02', Null, 2, Null),
+(7, 'fiz', '760303376240', Null, Null, Null, 1, Null),
+(8, 'fiz', '123456789010', Null, Null, Null, 2, Null),
+(9, 'fiz', '109876543210', Null, Null, Null, 3, Null),
+(10, 'fiz', '111122223333', Null, Null, Null, 4, Null),
+(11, 'fiz', '444455556666', Null, Null, Null, 5, Null),
+(12, 'fiz', '777788889999', Null, Null, Null, 6, Null),
+(13, 'OOO', '7777777777', 'NewOldBlinov', '2015-12-31', Null, 1, 4);
+
+INSERT INTO public."Accounts" VALUES
+(1, '11111111111111111111', 2, '2003-02-26', Null),
+(2, '22222222222222222222', 2, '2005-04-24', Null),
+(3, '12121212121212121212', 4, '2010-10-19', Null),
+(4, '21212121212121212121', 4, '2020-01-04', Null),
+(5, '33333333333333333333', 13, '2015-12-31', Null),
+(6, '44444444444444444444', 1, '2015-06-09', Null),
+(7, '55555555555555555555', 3, '2011-11-11', '2025-03-02'),
+(8, '77777777777777777777', 7, '2016-07-07', Null);
+
+INSERT INTO public."Transactions" VALUES
+(1, 1, 2, '2005-04-26', 20000000.10, Null),
+(2, 1, 2, '2005-05-30', 40000000.10, Null),
+(3, 2, 1, '2010-05-05', 30000.10, Null),
+(4, 1, 3, '2020-11-11', 200000.10, Null),
+(5, 1, 4, '2021-12-12', 12345.10, Null),
+(6, 4, 2, '2021-12-12', 12345.10, Null),
+(7, 4, 3, '2021-12-15', 100000000.10, Null),
+(8, 6, 7, '2015-03-04', 120000.00, Null),
+(9, 1, 8, '2022-03-03', 100000000.20, Null),
+(10, 7, 8, '2013-05-05', 10000.10, Null),
+(11, 8, 5, '2018-06-06', 2300.10, Null);
 
 END;
 

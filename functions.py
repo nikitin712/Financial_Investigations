@@ -1,5 +1,6 @@
 import psycopg2
 import pandas as pd
+from graph import *
 
 pd.set_option('display.max_rows', None)  # Выводить все строки
 pd.set_option('display.max_columns', None)  # Выводить все столбцы
@@ -19,6 +20,14 @@ def connection_db():
 
 
 cursor, connection = connection_db()
+
+def is_correct_data(date):
+    d = date.rstrip().split('-')
+    if len(d) != 3 or len(d[0]) != 4 or len(d[1]) != 2 or len(d[2]) != 2 or not(0 < int(d[1]) < 13) or not(0 < int(d[2]) < 32):
+        return False
+    else:
+        return True
+
 
 
 def print_data(df, page_size=10):
@@ -201,6 +210,7 @@ If you want to finish enter '0' to return to menu or '9' to finish:''', end=' ')
         elif action == '9':
             return False
 
+    # если ввели инициалы
     if len(action.split()) == 3:
         query = f'''SELECT person_id, last_name, first_name, second_name, birthday, city_name
                             FROM public."Persons" as p
@@ -209,6 +219,7 @@ If you want to finish enter '0' to return to menu or '9' to finish:''', end=' ')
                                     and p.second_name = '{action.split()[2]}';'''
         df = pd.read_sql(query, connection)
 
+        # если есть информация о человеке, выводим ее
         if len(df) != 0:
             print(f'Here all info about {action}:')
             print_data(df)
@@ -221,13 +232,28 @@ If you want to finish enter '0' to return to menu or '9' to finish:''', end=' ')
                 WHERE p.last_name = '{action.split()[0]}' and p.first_name = '{action.split()[1]}'
                                     and p.second_name = '{action.split()[2]}';'''
             df = pd.read_sql(query, connection)
+
             if len(df) != 0:
                 print_data(df)
             else:
                 print('No bodies')
 
+
+            print('Accounts of body:')
+            query = f'''SELECT account_id, account_number, body_id, body_name, a.open_date, a.close_date
+                        FROM public."Accounts" a 
+                        INNER JOIN public."Bodies" b ON a.body_id = b.body_id
+                        INNER JOIN public."Persons" p ON b."CEO_id_or_person_id" = p.person_id
+                        WHERE p.last_name = '{action.split()[0]}' and p.first_name = '{action.split()[1]}'
+                                    and p.second_name = '{action.split()[2]}';'''
+            if len(df) != 0:
+                print_data(df)
+            else:
+                print('No accounts')
+
         else:
             print('No info about person')
+    # если ввели название организации
     else:
         print(" 'fiz' - private person\n 'ENT' - entepreneur\n 'OOO' - otkritoe akcionernoe obshestvo\n 'GUP' - government unitarnoe predpriyatie")
         query = f'''SELECT body_type, body_name, b."INN" as body_INN, start_date, 
@@ -250,22 +276,212 @@ If you want to finish enter '0' to return to menu or '9' to finish:''', end=' ')
     return True
 
 
+def find_connections():
+    print('=' * 100)
+    print('''Here you can find connections between body and others. 
+Enter name of private person in format 'Last_name First_name Second_name' 
+or name of professional body in format 'name_of_body' to find info about. 
+If you want to finish enter '0' to return to menu or '9' to finish:''', end=' ')
+    name = input()
+    if name == '0':
+        # возврат в меню
+        return True
+    elif name == '9':
+        # завершение работы
+        return False
+
+# вводим инициалы или название пока не будет верный формат
+    while len(name.rstrip().split()) != 3 and len(name.rstrip().split()) != 1:
+        print('''Incorrect format... 
+Enter name of private person in format 'Last_name First_name Second_name' 
+or name of professional body in format 'name_of_body' to find info about. 
+If you want to finish enter '0' to return to menu or '9' to finish:''', end=' ')
+        name = input()
+        if name == '0':
+            return True
+        elif name == '9':
+            return False
+
+    # ввод периода
+    date = input('''\nEnter period of time in format "YYYY-MM-DD YYYY-MM-DD"
+If you want to finish enter '0' to return to menu or '9' to finish: ''')
+    if date == '0':
+        return True
+    elif date == '9':
+        return False
+
+    while len(date.split()) != 2 or not(is_correct_data(date.split()[0])) or not(is_correct_data(date.split()[1])):
+        date = input('''\nIncorrect format...
+Enter period of time in format "YYYY-MM-DD YYYY-MM-DD"
+If you want to finish enter '0' to return to menu or '9' to finish: ''')
+        if date == '0':
+            return True
+        elif date == '9':
+            return False
+
+# если ищем по человеку
+    if len(name.split()) == 3:
+        print('- ' * 50)
+        print('Transactions from that body:\n')
+        query_from = f'''SELECT CONCAT(pf.last_name, ' ', pf.first_name, ', ', pf.birthday, ', ', cf.city_name) as sender, 
+                            CONCAT(bf.body_id, ', ', bf.body_type, ', ', bf."INN", ', ', bf.body_name) as sender_body, 
+                            af.account_number as acc_from, t.amount, t.trans_date as date, at.account_number as acc_to, 
+                            CONCAT(bt.body_id, ', ', bt.body_type, ', ', bt."INN", ', ', bt.body_name) as reciever_body,
+                            CONCAT(pt.last_name, ' ', pt.first_name, ', ', pt.birthday, ', ', ct.city_name) as reciever
+                        FROM public."Cities" as cf
+                        INNER JOIN public."Persons" as pf ON cf.city_id = pf.city_id
+                        INNER JOIN public."Bodies" as bf ON pf.person_id = bf."CEO_id_or_person_id"
+                        INNER JOIN public."Accounts" as af ON bf.body_id = af.body_id
+                        INNER JOIN public."Transactions" as t ON af.account_id = t.acc_from
+                        INNER JOIN public."Accounts" as at ON t.acc_to = at.account_id
+                        INNER JOIN public."Bodies" as bt ON at.body_id = bt.body_id
+                        INNER JOIN public."Persons" as pt ON bt."CEO_id_or_person_id" = pt.person_id
+                        INNER JOIN public."Cities" as ct ON pt.city_id = ct.city_id
+                        WHERE pf.last_name = '{name.split()[0]}' AND pf.first_name = '{name.split()[1]}'
+                            AND pf.second_name = '{name.split()[2]}'
+                            AND t.trans_date > '{date.rstrip().split()[0]}'
+                            AND t.trans_date < '{date.rstrip().split()[1]}'
+                        ORDER BY date ASC;'''
+        df_from = pd.read_sql(query_from, connection)
+        print_data(df_from)
+
+        print('- ' * 50)
+        print('Transactions to that body:\n')
+        query_to = f'''SELECT CONCAT(pf.last_name, ' ', pf.first_name, ', ', pf.birthday, ', ', cf.city_name) as sender, 
+                            CONCAT(bf.body_id, ', ', bf.body_type, ', ', bf."INN", ', ', bf.body_name) as sender_body, 
+                            af.account_number as acc_from, t.amount, t.trans_date as date, at.account_number as acc_to, 
+                            CONCAT(bt.body_id, ', ', bt.body_type, ', ', bt."INN", ', ', bt.body_name) as reciever_body,
+                            CONCAT(pt.last_name, ' ', pt.first_name, ', ', pt.birthday, ', ', ct.city_name) as reciever
+                                    FROM public."Cities" as cf
+                                    INNER JOIN public."Persons" as pf ON cf.city_id = pf.city_id
+                                    INNER JOIN public."Bodies" as bf ON pf.person_id = bf."CEO_id_or_person_id"
+                                    INNER JOIN public."Accounts" as af ON bf.body_id = af.body_id
+                                    INNER JOIN public."Transactions" as t ON af.account_id = t.acc_from
+                                    INNER JOIN public."Accounts" as at ON t.acc_to = at.account_id
+                                    INNER JOIN public."Bodies" as bt ON at.body_id = bt.body_id
+                                    INNER JOIN public."Persons" as pt ON bt."CEO_id_or_person_id" = pt.person_id
+                                    INNER JOIN public."Cities" as ct ON pt.city_id = ct.city_id
+                                    WHERE pt.last_name = '{name.split()[0]}' AND pt.first_name = '{name.split()[1]}'
+                                        AND pt.second_name = '{name.split()[2]}'
+                                        AND t.trans_date > '{date.rstrip().split()[0]}'
+                                        AND t.trans_date < '{date.rstrip().split()[1]}'
+                                    ORDER BY t.trans_date ASC;'''
+        df_to = pd.read_sql(query_to, connection)
+        print_data(df_to)
+
+
+        query_union = f'''SELECT CONCAT(pf.last_name, ' ', pf.first_name, ', ', pf.birthday, ', ', cf.city_name) as sender, 
+                            CONCAT(bf.body_id, ', ', bf.body_type, ', ', bf."INN", ', ', bf.body_name) as sender_body, 
+                            af.account_number as acc_from, t.amount, t.trans_date as trans_date, at.account_number as acc_to, 
+                            CONCAT(bt.body_id, ', ', bt.body_type, ', ', bt."INN", ', ', bt.body_name) as reciever_body,
+                            CONCAT(pt.last_name, ' ', pt.first_name, ', ', pt.birthday, ', ', ct.city_name) as reciever
+                        FROM public."Cities" as cf
+                        INNER JOIN public."Persons" as pf ON cf.city_id = pf.city_id
+                        INNER JOIN public."Bodies" as bf ON pf.person_id = bf."CEO_id_or_person_id"
+                        INNER JOIN public."Accounts" as af ON bf.body_id = af.body_id
+                        INNER JOIN public."Transactions" as t ON af.account_id = t.acc_from
+                        INNER JOIN public."Accounts" as at ON t.acc_to = at.account_id
+                        INNER JOIN public."Bodies" as bt ON at.body_id = bt.body_id
+                        INNER JOIN public."Persons" as pt ON bt."CEO_id_or_person_id" = pt.person_id
+                        INNER JOIN public."Cities" as ct ON pt.city_id = ct.city_id
+                        WHERE pf.last_name = '{name.split()[0]}' AND pf.first_name = '{name.split()[1]}'
+                            AND pf.second_name = '{name.split()[2]}'
+                            AND trans_date > '{date.rstrip().split()[0]}'
+                            AND trans_date < '{date.rstrip().split()[1]}'
+                            
+                        UNION
+                        
+                        SELECT CONCAT(pf.last_name, ' ', pf.first_name, ', ', pf.birthday, ', ', cf.city_name) as sender, 
+                            CONCAT(bf.body_id, ', ', bf.body_type, ', ', bf."INN", ', ', bf.body_name) as sender_body, 
+                            af.account_number as acc_from, t.amount, t.trans_date as trans_date, at.account_number as acc_to, 
+                            CONCAT(bt.body_id, ', ', bt.body_type, ', ', bt."INN", ', ', bt.body_name) as reciever_body,
+                            CONCAT(pt.last_name, ' ', pt.first_name, ', ', pt.birthday, ', ', ct.city_name) as reciever
+                                    FROM public."Cities" as cf
+                                    INNER JOIN public."Persons" as pf ON cf.city_id = pf.city_id
+                                    INNER JOIN public."Bodies" as bf ON pf.person_id = bf."CEO_id_or_person_id"
+                                    INNER JOIN public."Accounts" as af ON bf.body_id = af.body_id
+                                    INNER JOIN public."Transactions" as t ON af.account_id = t.acc_from
+                                    INNER JOIN public."Accounts" as at ON t.acc_to = at.account_id
+                                    INNER JOIN public."Bodies" as bt ON at.body_id = bt.body_id
+                                    INNER JOIN public."Persons" as pt ON bt."CEO_id_or_person_id" = pt.person_id
+                                    INNER JOIN public."Cities" as ct ON pt.city_id = ct.city_id
+                                    WHERE pt.last_name = '{name.split()[0]}' AND pt.first_name = '{name.split()[1]}'
+                                        AND pt.second_name = '{name.split()[2]}'
+                                        AND trans_date > '{date.rstrip().split()[0]}'
+                                        AND trans_date < '{date.rstrip().split()[1]}'
+                        ORDER BY trans_date ASC;'''
+
+        df_union = pd.read_sql(query_union, connection)
+        print_data(df_union)
+        draw_transaction_graph(df_union, "my_graph.png")
+
+
+    else:
+        print('- ' * 50)
+        print('Transactions from that body:\n')
+        query_from = f'''SELECT CONCAT(pf.last_name, ' ', pf.first_name, ', ', pf.birthday, ', ', cf.city_name) as sender, 
+                            CONCAT(bf.body_id, ', ', bf.body_type, ', ', bf."INN", ', ', bf.body_name) as sender_body, 
+                            af.account_number as acc_from, t.amount, t.trans_date, at.account_number as acc_to, 
+                            CONCAT(bt.body_id, ', ', bt.body_type, ', ', bt."INN", ', ', bt.body_name) as reciever_body,
+                            CONCAT(pt.last_name, ' ', pt.first_name, ', ', pt.birthday, ', ', ct.city_name) as reciever
+                                FROM public."Cities" as cf
+                                INNER JOIN public."Persons" as pf ON cf.city_id = pf.city_id
+                                INNER JOIN public."Bodies" as bf ON pf.person_id = bf."CEO_id_or_person_id"
+                                INNER JOIN public."Accounts" as af ON bf.body_id = af.body_id
+                                INNER JOIN public."Transactions" as t ON af.account_id = t.acc_from
+                                INNER JOIN public."Accounts" as at ON t.acc_to = at.account_id
+                                INNER JOIN public."Bodies" as bt ON at.body_id = bt.body_id
+                                INNER JOIN public."Persons" as pt ON bt."CEO_id_or_person_id" = pt.person_id
+                                INNER JOIN public."Cities" as ct ON pt.city_id = ct.city_id
+                                WHERE bf.body_name = '{name}'
+                                    AND t.trans_date > '{date.rstrip().split()[0]}'
+                                    AND t.trans_date < '{date.rstrip().split()[1]}'
+                                ORDER BY t.trans_date ASC;'''
+        df_from = pd.read_sql(query_from, connection)
+        print_data(df_from)
+
+        print('- ' * 50)
+        print('Transactions to that body:\n')
+        query_to = f'''SELECT CONCAT(pf.last_name, ' ', pf.first_name, ', ', pf.birthday, ', ', cf.city_name) as sender, 
+                            CONCAT(bf.body_id, ', ', bf.body_type, ', ', bf."INN", ', ', bf.body_name) as sender_body, 
+                            af.account_number as acc_from, t.amount, t.trans_date, at.account_number as acc_to, 
+                            CONCAT(bt.body_id, ', ', bt.body_type, ', ', bt."INN", ', ', bt.body_name) as reciever_body,
+                            CONCAT(pt.last_name, ' ', pt.first_name, ', ', pt.birthday, ', ', ct.city_name) as reciever
+                                            FROM public."Cities" as cf
+                                            INNER JOIN public."Persons" as pf ON cf.city_id = pf.city_id
+                                            INNER JOIN public."Bodies" as bf ON pf.person_id = bf."CEO_id_or_person_id"
+                                            INNER JOIN public."Accounts" as af ON bf.body_id = af.body_id
+                                            INNER JOIN public."Transactions" as t ON af.account_id = t.acc_from
+                                            INNER JOIN public."Accounts" as at ON t.acc_to = at.account_id
+                                            INNER JOIN public."Bodies" as bt ON at.body_id = bt.body_id
+                                            INNER JOIN public."Persons" as pt ON bt."CEO_id_or_person_id" = pt.person_id
+                                            INNER JOIN public."Cities" as ct ON pt.city_id = ct.city_id
+                                            WHERE bt.body_name = '{name}'
+                                                AND t.trans_date > '{date.rstrip().split()[0]}'
+                                                AND t.trans_date < '{date.rstrip().split()[1]}'
+                                            ORDER BY t.trans_date ASC;'''
+        df_to = pd.read_sql(query_to, connection)
+        print_data(df_to)
+
+        query_union = query_from + '\n UNION \n' + query_to
+        df_union = pd.read_sql(query_union, connection)
+        draw_transaction_graph(df_union, "my_graph.png")
+
+
+    return True
+
+
 def menu():
     while True:
-        print('=' * 100)
-        print('''You are in menu. 
+        op = ''
+        while op not in ['1', '2', '3', '4', '9']:
+            print('=' * 100)
+            print('''You are in menu. 
 1) enter '1' to find info in DataBase
 2) enter '2' to insert data into DataBase
 3) enter '3' to find info about private person or professional body
-4) enter '9' to finish work
-Enter option:''', end=' ')
-        op = input()
-        while op not in ['1', '2', '3', '9']:
-            print('''Choose only between:
-1) enter '1' to find info in DataBase
-2) enter '2' to insert data into DataBase
-3) enter '3' to find info about private person or professional body
-4) enter '9' to finish work
+4) enter '4' to find connections between body and other through transacions
+5) enter '9' to finish work
 Enter option:''', end=' ')
             op = input()
         flag = False
@@ -278,6 +494,8 @@ Enter option:''', end=' ')
                 flag = insert()
             elif op == '3':
                 flag = search_by_name()
+            elif op == '4':
+                flag = find_connections()
         if flag:
             continue
         else:
